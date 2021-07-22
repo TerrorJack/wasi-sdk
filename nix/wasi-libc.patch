@@ -1,0 +1,21 @@
+--- a/src/wasi-libc/Makefile
++++ b/src/wasi-libc/Makefile
+@@ -3,7 +3,7 @@
+ WASM_CC ?= clang
+ WASM_NM ?= $(patsubst %clang,%llvm-nm,$(WASM_CC))
+ WASM_AR ?= $(patsubst %clang,%llvm-ar,$(WASM_CC))
+-WASM_CFLAGS ?= -O2 -DNDEBUG
++WASM_CFLAGS ?= -Oz -DNDEBUG
+ # The directory where we build the sysroot.
+ SYSROOT ?= $(CURDIR)/sysroot
+ # A directory to install to for "make install".
+--- a/src/wasi-libc/expected/wasm32-wasi/predefined-macros.txt
++++ b/src/wasi-libc/expected/wasm32-wasi/predefined-macros.txt
+@@ -2647,6 +2647,7 @@
+ #define __OPENCL_MEMORY_SCOPE_SUB_GROUP 4
+ #define __OPENCL_MEMORY_SCOPE_WORK_GROUP 1
+ #define __OPENCL_MEMORY_SCOPE_WORK_ITEM 0
++#define __OPTIMIZE_SIZE__ 1
+ #define __OPTIMIZE__ 1
+ #define __ORDER_BIG_ENDIAN__ 4321
+ #define __ORDER_LITTLE_ENDIAN__ 1234

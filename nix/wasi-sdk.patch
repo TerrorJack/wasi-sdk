@@ -1,0 +1,94 @@
+--- a/Makefile
++++ b/Makefile
+@@ -56,10 +56,11 @@
+ 	mkdir -p build/llvm
+ 	cd build/llvm && cmake -G Ninja \
+ 		-DCMAKE_BUILD_TYPE=MinSizeRel \
++		-DCMAKE_EXE_LINKER_FLAGS="-static" \
+ 		-DCMAKE_INSTALL_PREFIX=$(PREFIX) \
+ 		-DLLVM_TARGETS_TO_BUILD=WebAssembly \
+ 		-DLLVM_DEFAULT_TARGET_TRIPLE=wasm32-wasi \
+-		-DLLVM_ENABLE_PROJECTS="lld;clang;clang-tools-extra" \
++		-DLLVM_ENABLE_PROJECTS="lld;clang" \
+ 		$(if $(patsubst 9.%,,$(CLANG_VERSION)), \
+ 	             $(if $(patsubst 10.%,,$(CLANG_VERSION)), \
+ 		          -DDEFAULT_SYSROOT=../share/wasi-sysroot, \
+@@ -69,9 +70,6 @@
+ 		$(LLVM_PROJ_DIR)/llvm
+ 	DESTDIR=$(DESTDIR) ninja $(NINJA_FLAGS) -v -C build/llvm \
+ 		install-clang \
+-		install-clang-format \
+-		install-clang-tidy \
+-		install-clang-apply-replacements \
+ 		install-lld \
+ 		install-llvm-ranlib \
+ 		install-llvm-strip \
+@@ -103,7 +101,7 @@
+ 		-DCMAKE_CXX_COMPILER_WORKS=ON \
+ 		-DCMAKE_AR=$(BUILD_PREFIX)/bin/ar \
+ 		-DCMAKE_MODULE_PATH=$(ROOT_DIR)/cmake \
+-		-DCMAKE_BUILD_TYPE=RelWithDebInfo \
++		-DCMAKE_BUILD_TYPE=MinSizeRel \
+ 		-DCMAKE_TOOLCHAIN_FILE=$(ROOT_DIR)/wasi-sdk.cmake \
+ 		-DCOMPILER_RT_BAREMETAL_BUILD=On \
+ 		-DCOMPILER_RT_BUILD_XRAY=OFF \
+@@ -112,7 +110,7 @@
+ 		-DCOMPILER_RT_ENABLE_IOS=OFF \
+ 		-DCOMPILER_RT_DEFAULT_TARGET_ONLY=On \
+ 		-DWASI_SDK_PREFIX=$(BUILD_PREFIX) \
+-		-DCMAKE_C_FLAGS="$(DEBUG_PREFIX_MAP) --sysroot=$(BUILD_PREFIX)/share/wasi-sysroot" \
++		-DCMAKE_C_FLAGS="-Oz -flto $(DEBUG_PREFIX_MAP) --sysroot=$(BUILD_PREFIX)/share/wasi-sysroot" \
+ 		-DLLVM_CONFIG_PATH=$(ROOT_DIR)/build/llvm/bin/llvm-config \
+ 		-DCOMPILER_RT_OS_DIR=wasi \
+ 		-DCMAKE_INSTALL_PREFIX=$(PREFIX)/lib/clang/$(CLANG_VERSION)/ \
+@@ -138,7 +136,7 @@
+     -DLIBCXX_HAS_EXTERNAL_THREAD_API:BOOL=OFF \
+     -DLIBCXX_BUILD_EXTERNAL_THREAD_LIBRARY:BOOL=OFF \
+     -DLIBCXX_HAS_WIN32_THREAD_API:BOOL=OFF \
+-    -DCMAKE_BUILD_TYPE=RelWithDebugInfo \
++    -DCMAKE_BUILD_TYPE=MinSizeRel \
+     -DLIBCXX_ENABLE_SHARED:BOOL=OFF \
+     -DLIBCXX_ENABLE_EXPERIMENTAL_LIBRARY:BOOL=OFF \
+     -DLIBCXX_ENABLE_EXCEPTIONS:BOOL=OFF \
+@@ -154,8 +152,8 @@
+ 	# Do the build.
+ 	mkdir -p build/libcxx
+ 	cd build/libcxx && cmake -G Ninja $(LIBCXX_CMAKE_FLAGS) \
+-	    -DCMAKE_C_FLAGS="$(DEBUG_PREFIX_MAP) --sysroot=$(BUILD_PREFIX)/share/wasi-sysroot" \
+-	    -DCMAKE_CXX_FLAGS="$(DEBUG_PREFIX_MAP) --sysroot=$(BUILD_PREFIX)/share/wasi-sysroot" \
++	    -DCMAKE_C_FLAGS="-Oz -flto $(DEBUG_PREFIX_MAP) --sysroot=$(BUILD_PREFIX)/share/wasi-sysroot" \
++	    -DCMAKE_CXX_FLAGS="-Oz -flto $(DEBUG_PREFIX_MAP) --sysroot=$(BUILD_PREFIX)/share/wasi-sysroot" \
+ 	    -DLIBCXX_LIBDIR_SUFFIX=$(ESCAPE_SLASH)/wasm32-wasi \
+ 	    $(LLVM_PROJ_DIR)/libcxx
+ 	ninja $(NINJA_FLAGS) -v -C build/libcxx
+@@ -181,7 +179,7 @@
+     -DLIBCXXABI_ENABLE_PIC:BOOL=OFF \
+     -DCXX_SUPPORTS_CXX11=ON \
+     -DLLVM_COMPILER_CHECKED=ON \
+-    -DCMAKE_BUILD_TYPE=RelWithDebugInfo \
++    -DCMAKE_BUILD_TYPE=MinSizeRel \
+     -DLIBCXXABI_LIBCXX_PATH=$(LLVM_PROJ_DIR)/libcxx \
+     -DLIBCXXABI_LIBCXX_INCLUDES=$(BUILD_PREFIX)/share/wasi-sysroot/include/c++/v1 \
+     -DLLVM_CONFIG_PATH=$(ROOT_DIR)/build/llvm/bin/llvm-config \
+@@ -195,8 +193,8 @@
+ 	# Do the build.
+ 	mkdir -p build/libcxxabi
+ 	cd build/libcxxabi && cmake -G Ninja $(LIBCXXABI_CMAKE_FLAGS) \
+-	    -DCMAKE_C_FLAGS="$(DEBUG_PREFIX_MAP) --sysroot=$(BUILD_PREFIX)/share/wasi-sysroot" \
+-	    -DCMAKE_CXX_FLAGS="$(DEBUG_PREFIX_MAP) --sysroot=$(BUILD_PREFIX)/share/wasi-sysroot" \
++	    -DCMAKE_C_FLAGS="-Oz -flto $(DEBUG_PREFIX_MAP) --sysroot=$(BUILD_PREFIX)/share/wasi-sysroot" \
++	    -DCMAKE_CXX_FLAGS="-Oz -flto $(DEBUG_PREFIX_MAP) --sysroot=$(BUILD_PREFIX)/share/wasi-sysroot" \
+ 	    -DLIBCXXABI_LIBDIR_SUFFIX=$(ESCAPE_SLASH)/wasm32-wasi \
+ 	    $(LLVM_PROJ_DIR)/libcxxabi
+ 	ninja $(NINJA_FLAGS) -v -C build/libcxxabi
+--- a/version.sh
++++ b/version.sh
+@@ -1,5 +1,3 @@
+-#!/usr/bin/env bash
+-set -e
+-GIT_DESCR=$(git describe --long --candidates=999 --match='wasi-sdk-*' --dirty='+m' --abbrev=12)
+-GIT_PACKAGE_VERSION=$(echo $GIT_DESCR | perl -ne 'if(/^wasi-sdk-(\d+)-(\d+)-g([0-9a-f]{7,12})([+]m)?$/) { if($2 == 0) { print "$1.$2$4" } else { print "$1.$2g$3$4" } exit } else { print "could not parse git description"; exit 1 }';)
+-echo $GIT_PACKAGE_VERSION
++#!/bin/sh
++
++exec ./llvm_version.sh
